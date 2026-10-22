@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protótipos — Jogo de Adivinhação de Palavras</title>
+<style>
+  :root { --bg:#0b0f19; --card:#141a2a; --text:#e8ecf4; --muted:#97a3be; --accent:#7c5cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:40px 16px; }
+  h1 { font-size: 28px; margin: 0 0 8px; }
+  p.sub { color: var(--muted); margin: 0 0 32px; max-width: 640px; text-align:center; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width:100%; max-width: 980px; }
+  .card { background: var(--card); border:1px solid #26304a; border-radius: 14px; padding: 24px; display:flex; flex-direction:column; gap: 12px; transition: transform .15s ease, border-color .15s ease; }
+  .card:hover { transform: translateY(-4px); border-color: var(--accent); }
+  .card h2 { margin:0; font-size: 20px; }
+  .tag { display:inline-block; font-size: 12px; padding: 2px 10px; border-radius: 999px; background: #26304a; color: var(--muted); }
+  .card p { color: var(--muted); font-size: 14px; line-height:1.5; flex:1; }
+  .btn { display:inline-block; text-align:center; text-decoration:none; background: var(--accent); color:#fff; padding: 10px 16px; border-radius: 8px; font-weight:600; }
+  .btn:hover { opacity:.9; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+  <h1>Protótipos de Interface</h1>
+  <p class="sub">Jogo casual de adivinhação de palavras (Wordle-style, PT-BR). Três abordagens criadas por um painel de especialistas (UX, Acessibilidade, Design Visual). Clique para abrir cada mockup interativo no navegador.</p>
+  <div class="grid">
+    <div class="card">
+      <span class="tag">UX Design</span>
+      <h2>Protótipo A — Minimal Classic</h2>
+      <p>Abordagem limpa e sem distrações. Paleta neutra, muito espaço em branco, animações sutis. O jogo é o herói. Ideal para quem quer foco total no desafio diário.</p>
+      <a class="btn" href="proto-minimal.html" target="_blank" rel="noopener">Abrir protótipo</a>
+    </div>
+    <div class="card">
+      <span class="tag">Acessibilidade Web</span>
+      <h2>Protótipo B — Accessible First</h2>
+      <p>Pensado para leitores de tela: live regions, navegação por teclado, skip link, landmarks, modo alto contraste, segurança para daltonismo com padrões e glifos.</p>
+      <a class="btn" href="proto-accessible.html" target="_blank" rel="noopener">Abrir protótipo</a>
+    </div>
+    <div class="card">
+      <span class="tag">Design Visual</span>
+      <h2>Protótipo C — Playful Visual</h2>
+      <p>Tema escuro por padrão com destaques neon, fundo animado, glassmorphism, micro-interações, confetes na vitória e badge de streak com brilho.</p>
+      <a class="btn" href="proto-playful.html" target="_blank" rel="noopener">Abrir protótipo</a>
+    </div>
+  </div>
+  <footer>Arquivos autocontidos (HTML/CSS/JS). Abra diretamente no navegador.</footer>
+</body>
+</html>

@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Palavra do Dia — Acessível</title>
+<style>
+  /* ============================================================
+     ACCESSIBLE FIRST — design tokens (high contrast targets)
+     ============================================================ */
+  :root {
+    --bg: #ffffff;
+    --bg-elev: #ffffff;
+    --fg: #1a1a1a;
+    --fg-muted: #3a3a3a;
+    --border: #595959;
+    --tile-bg: #ffffff;
+    --tile-border: #595959;
+    --key-bg: #e8e8e8;
+    --key-fg: #1a1a1a;
+    --correct: #1e7e34;
+    --present: #b26a00;
+    --absent: #595959;
+    --toast-bg: #1a1a1a;
+    --toast-fg: #ffffff;
+    --shadow: 0 1px 2px rgba(0,0,0,.12);
+    --radius: 8px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --focus: currentColor;
+  }
+  [data-theme="dark"] {
+    --bg: #0b0b0c;
+    --bg-elev: #161617;
+    --fg: #f2f2f2;
+    --fg-muted: #c4c4c4;
+    --border: #8a8a8a;
+    --tile-bg: #0b0b0c;
+    --tile-border: #8a8a8a;
+    --key-bg: #2a2a2c;
+    --key-fg: #f2f2f2;
+    --correct: #2e9e4a;
+    --present: #e0a13a;
+    --absent: #4a4a4c;
+    --toast-bg: #f2f2f2;
+    --toast-fg: #0b0b0c;
+  }
+  /* Colorblind-safe distinct colors + patterns controlled by data attribute */
+  [data-colorblind="true"] {
+    --correct: #1f6fb2;   /* blue */
+    --present: #d97706;   /* orange */
+  }
+  /* High contrast overrides: black/white with thick borders */
+  [data-highcontrast="true"] {
+    --bg: #ffffff;
+    --bg-elev: #ffffff;
+    --fg: #000000;
+    --fg-muted: #000000;
+    --border: #000000;
+    --tile-bg: #ffffff;
+    --tile-border: #000000;
+    --key-bg: #ffffff;
+    --key-fg: #000000;
+    --correct: #005a24;
+    --present: #7a4a00;
+    --absent: #444444;
+    --toast-bg: #000000;
+    --toast-fg: #ffffff;
+    --shadow: none;
+  }
+  [data-theme="dark"][data-highcontrast="true"] {
+    --bg: #000000;
+    --bg-elev: #000000;
+    --fg: #ffffff;
+    --fg-muted: #ffffff;
+    --border: #ffffff;
+    --tile-bg: #000000;
+    --tile-border: #ffffff;
+    --key-bg: #000000;
+    --key-fg: #ffffff;
+    --absent: #888888;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg); color: var(--fg);
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    font-size: 16px; line-height: 1.4;
+  }
+
+  /* Visually hidden (SR-only) but focusable */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .sr-only-input {
+    position: absolute; left: -9999px; top: auto; width: 1px; height: 1px;
+    overflow: hidden;
+  }
+  .sr-only-input:focus { outline: 3px solid #005fcc; }
+
+  /* Skip link */
+  .skip-link {
+    position: absolute; top: -1000px; left: 12px; z-index: 1000;
+    background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 6px;
+    font-weight: 700; text-decoration: none;
+  }
+  .skip-link:focus { top: 12px; outline: 3px solid var(--fg); outline-offset: 2px; }
+
+  header.app-header {
+    width: 100%; max-width: 560px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 2px solid var(--border); gap: 8px;
+  }
+  .title { font-size: 20px; font-weight: 800; margin: 0; letter-spacing: 1px; }
+  .streak { font-size: 14px; color: var(--fg-muted); display: flex; align-items: center; gap: 4px; }
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: transparent; border: 2px solid var(--border); color: var(--fg);
+    min-width: 48px; min-height: 48px; border-radius: 8px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 18px;
+    font-family: inherit;
+  }
+  .icon-btn:hover { background: var(--key-bg); }
+  .icon-btn:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px; width: 100%; }
+  #game { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; outline: none; }
+  .status-panel {
+    width: min(92vw, 400px); background: var(--bg-elev); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px; font-size: 14px; color: var(--fg);
+    min-height: 52px;
+  }
+  .status-panel strong { display: block; }
+
+  .board {
+    display: grid; grid-template-rows: repeat(6, 1fr);
+    gap: 6px; width: min(92vw, 360px); aspect-ratio: 5/6;
+  }
+  .row { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; }
+  .tile {
+    border: 2px solid var(--tile-border); border-radius: var(--radius);
+    background: var(--tile-bg); display: flex; align-items: center; justify-content: center;
+    font-size: clamp(20px, 6vw, 28px); font-weight: 700; text-transform: uppercase;
+    user-select: none; position: relative; min-height: 48px; transition: transform .08s;
+  }
+  .tile.filled { border-color: var(--fg); }
+  .tile.correct { background: var(--correct); border-color: var(--correct); color: #fff; }
+  .tile.present { background: var(--present); border-color: var(--present); color: #fff; }
+  .tile.absent { background: var(--absent); border-color: var(--absent); color: #fff; }
+  /* colorblind: border styles + glyphs */
+  [data-colorblind="true"] .tile.correct { border-style: solid; }
+  [data-colorblind="true"] .tile.present { border-style: dashed; }
+  [data-colorblind="true"] .tile.absent { border-style: dotted; border-width: 3px; }
+  .tile .shape {
+    position: absolute; bottom: 1px; right: 3px; font-size: 12px; opacity: 0; color: #fff;
+    pointer-events: none;
+  }
+  [data-colorblind="true"] .tile .shape { opacity: 1; }
+  .tile.correct .shape::before { content: '●'; }
+  .tile.present .shape::before { content: '◐'; }
+  .tile.absent .shape::before { content: '×'; }
+  /* high contrast: thick borders always */
+  [data-highcontrast="true"] .tile { border-width: 3px; }
+
+  .tile.flip { animation: flip .35s ease; }
+  @keyframes pop { 0% { transform: scale(1);} 50% { transform: scale(1.06);} 100% { transform: scale(1);} }
+  @keyframes flip { 0% { transform: rotateX(0);} 50% { transform: rotateX(90deg);} 100% { transform: rotateX(0);} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+  .row.shake { animation: shake .35s ease; }
+  .tile.filled { animation: pop .08s ease; }
+
+  /* reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important; animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important; scroll-behavior: auto !important;
+    }
+  }
+  [data-reduced-motion="true"] *, [data-reduced-motion="true"] *::before, [data-reduced-motion="true"] *::after {
+    animation-duration: 0.001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important; scroll-behavior: auto !important;
+  }
+
+  /* Focus visible: 3px high contrast */
+  *:focus-visible {
+    outline: 3px solid currentColor; outline-offset: 2px; border-radius: 4px;
+  }
+  .key:focus-visible, .icon-btn:focus-visible, .btn:focus-visible, .toggle:focus-visible {
+    outline: 3px solid currentColor; outline-offset: 2px;
+  }
+
+  .keyboard { width: min(92vw, 560px); display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .kb-row { display: flex; gap: 4px; justify-content: center; width: 100%; }
+  .key {
+    background: var(--key-bg); color: var(--key-fg); border: 2px solid var(--border); border-radius: 6px;
+    padding: 0; min-width: 30px; min-height: 48px; font-size: 14px; font-weight: 700;
+    cursor: pointer; flex: 1; max-width: 46px; text-transform: uppercase; font-family: inherit;
+  }
+  .key.wide { flex: 1.5; max-width: 74px; font-size: 12px; }
+  .key.correct { background: var(--correct); border-color: var(--correct); color: #fff; }
+  .key.present { background: var(--present); border-color: var(--present); color: #fff; }
+  .key.absent { background: var(--absent); border-color: var(--absent); color: #fff; }
+  .key[aria-pressed="true"] { transform: translateY(1px); }
+  [data-colorblind="true"] .key.correct { border-bottom: 4px solid #fff; }
+  [data-colorblind="true"] .key.present { border-bottom: 4px dashed #fff; }
+  [data-colorblind="true"] .key.absent { border-bottom: 4px dotted #fff; }
+  @media (max-width: 480px) {
+    .key { min-height: 44px; font-size: 12px; }
+  }
+
+  .toast {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--toast-bg); color: var(--toast-fg); padding: 12px 18px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; opacity: 0; transition: all .2s; pointer-events: none; z-index: 50;
+    box-shadow: var(--shadow); border: 2px solid var(--border);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .popover-wrap { position: relative; }
+  .popover {
+    position: absolute; top: 52px; right: 0; background: var(--bg-elev);
+    border: 2px solid var(--border); border-radius: 10px; padding: 14px;
+    min-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 40;
+    display: none; flex-direction: column; gap: 12px;
+  }
+  .popover.open { display: flex; }
+  .pref-row { display: flex; align-items: center; justify-content: space-between; font-size: 15px; gap: 10px; }
+  .toggle {
+    width: 48px; height: 28px; border-radius: 14px; background: var(--border);
+    border: 2px solid var(--fg); cursor: pointer; position: relative; transition: background .2s;
+    min-width: 48px;
+  }
+  .toggle.on { background: var(--correct); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--bg); transition: left .2s; border: 1px solid var(--fg);
+  }
+  .toggle.on::after { left: 22px; }
+  .link-btn { background: none; border: 2px solid transparent; color: var(--fg); cursor: pointer; text-align: left; font-size: 15px; padding: 8px; border-radius: 6px; min-height: 44px; }
+  .link-btn:hover { background: var(--key-bg); }
+  .link-btn:focus-visible { outline: 3px solid currentColor; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100;
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg-elev); border: 2px solid var(--border); border-radius: 12px;
+    max-width: 440px; width: 100%; padding: 24px; max-height: 90vh; overflow: auto; position: relative;
+  }
+  .modal h2 { margin: 0 0 12px; font-size: 22px; }
+  .modal h3 { margin: 12px 0 6px; font-size: 14px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .modal p, .modal li { font-size: 15px; }
+  .close-x {
+    position: absolute; top: 10px; right: 12px; background: var(--key-bg); border: 2px solid var(--border);
+    width: 40px; height: 40px; border-radius: 6px; font-size: 20px; cursor: pointer; color: var(--fg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .close-x:focus-visible { outline: 3px solid currentColor; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 12px 0; }
+  .stat { text-align: center; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
+  .stat .num { font-size: 26px; font-weight: 800; }
+  .stat .lbl { font-size: 12px; color: var(--fg-muted); }
+  .dist { display: flex; flex-direction: column; gap: 4px; }
+  .dist-row { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .dist-label { width: 18px; font-weight: 700; }
+  .dist-bar-wrap { flex: 1; background: var(--key-bg); height: 22px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .dist-bar { height: 100%; background: var(--fg-muted); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; color: #fff; font-size: 12px; min-width: 0; }
+  .dist-bar.highlight { background: var(--correct); }
+  .emoji-grid { font-family: monospace; font-size: 20px; white-space: pre; margin: 12px 0; text-align: center; line-height: 1.3; padding: 10px; border: 1px dashed var(--border); border-radius: 6px; }
+  .btn {
+    background: var(--correct); color: #fff; border: 2px solid var(--correct); border-radius: 8px;
+    padding: 12px 16px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%;
+    min-height: 48px; font-family: inherit;
+  }
+  .btn.secondary { background: var(--key-bg); color: var(--fg); border-color: var(--border); }
+  .btn:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+  .countdown { font-size: 14px; color: var(--fg-muted); text-align: center; margin: 8px 0; font-weight: 600; }
+  .next-day-note { font-size: 13px; color: var(--fg-muted); text-align: center; }
+
+  footer.app-footer {
+    width: 100%; max-width: 560px; padding: 12px 16px; border-top: 2px solid var(--border);
+    font-size: 13px; color: var(--fg-muted); text-align: center;
+  }
+
+  @media (max-width: 480px) {
+    .title { font-size: 18px; }
+    .board { width: 94vw; }
+  }
+</style>
+<script src="../data/words-ptbr.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#game">Pular para o jogo</a>
+
+<header class="app-header" role="banner">
+  <h1 class="title">Palavra do Dia</h1>
+  <div class="streak" id="streakBadge" aria-label="Sequência atual">🔥 0</div>
+  <div class="header-actions">
+    <div class="popover-wrap">
+      <button class="icon-btn" id="settingsBtn" aria-label="Configurações" aria-haspopup="dialog" aria-expanded="false" aria-controls="popover">⚙</button>
+      <div class="popover" id="popover" role="dialog" aria-label="Configurações" aria-modal="false">
+        <div class="pref-row">
+          <span id="themeLabel">Tema escuro</span>
+          <button class="toggle" id="themeToggle" role="switch" aria-checked="false" aria-labelledby="themeLabel"></button>
+        </div>
+        <div class="pref-row">
+          <span id="cbLabel">Modo daltônico</span>
+          <button class="toggle" id="colorblindToggle" role="switch" aria-checked="false" aria-labelledby="cbLabel"></button>
+        </div>
+        <div class="pref-row">
+          <span id="hcLabel">Alto contraste</span>
+          <button class="toggle" id="highContrastToggle" role="switch" aria-checked="false" aria-labelledby="hcLabel"></button>
+        </div>
+        <div class="pref-row">
+          <span id="rmLabel">Movimento reduzido</span>
+          <button class="toggle" id="reducedMotionToggle" role="switch" aria-checked="false" aria-labelledby="rmLabel"></button>
+        </div>
+        <button class="link-btn" id="howToPlayBtn" type="button">Como jogar</button>
+        <button class="link-btn" id="statsBtn" type="button">Estatísticas</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="mainContent">
+  <section id="game" tabindex="-1" aria-labelledby="gameHeading">
+    <h2 id="gameHeading" class="sr-only">Jogo Palavra do Dia</h2>
+
+    <label class="sr-only" for="guessInput">Campo para digitar o palpite</label>
+    <input id="guessInput" class="sr-only-input" type="text" autocomplete="off"
+      autocapitalize="none" spellcheck="false" inputmode="none" aria-label="Campo de digitação do palpite" />
+
+    <div class="status-panel" id="statusPanel" role="status" aria-live="polite" aria-atomic="true">
+      <strong id="statusTitle">Pronto para jogar.</strong>
+      <span id="statusDetail">Digite uma palavra de 5 letras ou use o teclado na tela.</span>
+    </div>
+
+    <div id="board" class="board" role="grid" aria-label="Tabuleiro do jogo" aria-describedby="boardHelp"></div>
+    <p id="boardHelp" class="sr-only">
+      Seis linhas de cinco casas. Cada tentativa é anunciada em texto. Use o teclado físico ou as teclas na tela.
+    </p>
+
+    <nav aria-label="Teclado na tela" id="keyboardNav">
+      <div id="keyboard" class="keyboard" role="group" aria-label="Teclado na tela"></div>
+    </nav>
+  </section>
+</main>
+
+<footer class="app-footer" role="contentinfo">
+  Palavra do Dia — modo acessível. Preferências salvas neste navegador.
+</footer>
+
+<!-- Live regions -->
+<div id="livePolite" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div id="liveAssertive" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Result modal -->
+<div class="modal-backdrop" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultTitle" aria-hidden="true">
+  <div class="modal">
+    <button class="close-x" data-close="resultModal" aria-label="Fechar resultados">×</button>
+    <h2 id="resultTitle">Parabéns!</h2>
+    <div class="stat-grid" aria-label="Estatísticas">
+      <div class="stat"><div class="num" id="statPlayed">0</div><div class="lbl">Jogos</div></div>
+      <div class="stat"><div class="num" id="statWin">0</div><div class="lbl">Vitória %</div></div>
+      <div class="stat"><div class="num" id="statCur">0</div><div class="lbl">Sequência</div></div>
+      <div class="stat"><div class="num" id="statBest">0</div><div class="lbl">Melhor</div></div>
+    </div>
+    <h3>Distribuição de tentativas</h3>
+    <div class="dist" id="distChart" aria-label="Distribuição de tentativas"></div>
+    <h3>Escala para compartilhar</h3>
+    <div class="emoji-grid" id="emojiGrid" aria-label="Resumo em emojis para compartilhar"></div>
+    <button class="btn" id="shareBtn" type="button">Compartilhar resultado</button>
+    <div class="countdown" id="countdown" aria-live="off"></div>
+    <div class="next-day-note">Próxima palavra: amanhã.</div>
+  </div>
+</div>
+
+<!-- How to play modal -->
+<div class="modal-backdrop" id="howModal" role="dialog" aria-modal="true" aria-labelledby="howTitle" aria-hidden="true">
+  <div class="modal">
+    <button class="close-x" data-close="howModal" aria-label="Fechar instruções">×</button>
+    <h2 id="howTitle">Como jogar</h2>
+    <p>Adivinhe a palavra secreta de 5 letras em até 6 tentativas. Use Tab para navegar por todos os controles sem mouse.</p>
+    <p>Após cada tentativa, a cor, o padrão da borda e o glifo indicam o resultado:</p>
+    <ul>
+      <li><strong>Verde (●, borda sólida)</strong> — letra certa no lugar certo.</li>
+      <li><strong>Laranja/azul (◐, borda tracejada)</strong> — letra está na palavra, em outro lugar.</li>
+      <li><strong>Cinza (×, borda pontilhada)</strong> — letra não está na palavra.</li>
+    </ul>
+    <p>Palavras precisam estar na lista. O teclado físico e o teclado na tela funcionam da mesma forma.</p>
+    <p>No modo daltônico, as diferenças de padrão e glifo tornam o resultado independente de cor.</p>
+  </div>
+</div>
+
+<!-- Stats modal -->
+<div class="modal-backdrop" id="statsModal" role="dialog" aria-modal="true" aria-labelledby="statsTitle" aria-hidden="true">
+  <div class="modal">
+    <button class="close-x" data-close="statsModal" aria-label="Fechar estatísticas">×</button>
+    <h2 id="statsTitle">Estatísticas</h2>
+    <div class="stat-grid" aria-label="Estatísticas">
+      <div class="stat"><div class="num" id="sPlayed">0</div><div class="lbl">Jogos</div></div>
+      <div class="stat"><div class="num" id="sWin">0</div><div class="lbl">Vitória %</div></div>
+      <div class="stat"><div class="num" id="sCur">0</div><div class="lbl">Sequência</div></div>
+      <div class="stat"><div class="num" id="sBest">0</div><div class="lbl">Melhor</div></div>
+    </div>
+    <h3>Distribuição de tentativas</h3>
+    <div class="dist" id="statsDist" aria-label="Distribuição de tentativas"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   WORD DATA
+   WORD_LIST: valid 5-letter guesses (lowercase, no accents)
+   ANSWER_WORDS: smaller daily-answer subset
+   ============================================================ */
+
+
+
+/* ============================================================
+   APP LOGIC
+   ============================================================ */
+const KEY_PREFIX = 'a11y_';
+
+function normalizeWordList(list) {
+  return Array.from(new Set((list || []).filter(w => typeof w === 'string' && /^[a-z]{5}$/.test(w))));
+}
+const WORDS = normalizeWordList(typeof WORD_LIST !== 'undefined' ? WORD_LIST : []);
+const ANSWERS = normalizeWordList(typeof ANSWER_WORDS !== 'undefined' ? ANSWER_WORDS : []);
+// Ensure answers are valid guesses
+const ANSWER_SET = new Set(ANSWERS.filter(w => WORDS.includes(w)));
+const VALID_ANSWERS = ANSWER_SET.size ? ANSWERS.filter(w => WORDS.includes(w)) : [];
+
+const boardEl = document.getElementById('board');
+const keyboardEl = document.getElementById('keyboard');
+const toastEl = document.getElementById('toast');
+const streakBadge = document.getElementById('streakBadge');
+const settingsBtn = document.getElementById('settingsBtn');
+const popover = document.getElementById('popover');
+const themeToggle = document.getElementById('themeToggle');
+const colorblindToggle = document.getElementById('colorblindToggle');
+const highContrastToggle = document.getElementById('highContrastToggle');
+const reducedMotionToggle = document.getElementById('reducedMotionToggle');
+const guessInput = document.getElementById('guessInput');
+const statusPanel = document.getElementById('statusPanel');
+const statusTitle = document.getElementById('statusTitle');
+const statusDetail = document.getElementById('statusDetail');
+const livePolite = document.getElementById('livePolite');
+const liveAssertive = document.getElementById('liveAssertive');
+
+let state = { date: null, guesses: [], keyboard: {}, status: 'playing' };
+let answer = '';
+let currentGuess = '';
+let busy = false;
+let lastFocus = null;
+let motionQuery = null;
+
+function todayKey() {
+  const d = new Date();
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
+}
+function dayNumber() {
+  const d = new Date();
+  return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
+}
+
+function load(key, fallback) {
+  try { const v = localStorage.getItem(KEY_PREFIX + key); return v !== null ? JSON.parse(v) : fallback; }
+  catch (e) { return fallback; }
+}
+function save(key, val) {
+  try { localStorage.setItem(KEY_PREFIX + key, JSON.stringify(val)); } catch (e) {}
+}
+
+function prefsDefault() { return { theme: 'light', colorblind: false, highContrast: false, reducedMotion: false }; }
+function loadPrefs() {
+  const p = Object.assign(prefsDefault(), load('prefs', {}));
+  applyPrefs(p);
+  themeToggle.classList.toggle('on', p.theme === 'dark');
+  colorblindToggle.classList.toggle('on', !!p.colorblind);
+  highContrastToggle.classList.toggle('on', !!p.highContrast);
+  reducedMotionToggle.classList.toggle('on', !!p.reducedMotion);
+  themeToggle.setAttribute('aria-checked', p.theme === 'dark' ? 'true' : 'false');
+  colorblindToggle.setAttribute('aria-checked', p.colorblind ? 'true' : 'false');
+  highContrastToggle.setAttribute('aria-checked', p.highContrast ? 'true' : 'false');
+  reducedMotionToggle.setAttribute('aria-checked', p.reducedMotion ? 'true' : 'false');
+}
+function applyPrefs(p) {
+  const html = document.documentElement;
+  if (p.theme === 'dark') html.setAttribute('data-theme', 'dark'); else html.removeAttribute('data-theme');
+  if (p.colorblind) html.setAttribute('data-colorblind', 'true'); else html.removeAttribute('data-colorblind');
+  if (p.highContrast) html.setAttribute('data-highcontrast', 'true'); else html.removeAttribute('data-highcontrast');
+  // reduced motion: manual OR system preference
+  const systemReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (p.reducedMotion || systemReduced) html.setAttribute('data-reduced-motion', 'true');
+  else html.removeAttribute('data-reduced-motion');
+}
+function currentPrefs() {
+  const html = document.documentElement;
+  return {
+    theme: html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+    colorblind: html.getAttribute('data-colorblind') === 'true',
+    highContrast: html.getAttribute('data-highcontrast') === 'true',
+    reducedMotion: html.getAttribute('data-reduced-motion') === 'true'
+  };
+}
+function savePrefsFromDom() { save('prefs', currentPrefs()); }
+
+function prefersReducedMotion() {
+  return document.documentElement.getAttribute('data-reduced-motion') === 'true';
+}
+
+function loadStats() {
+  return load('stats', { played: 0, wins: 0, dist: [0,0,0,0,0,0], currentStreak: 0, bestStreak: 0, lastWinDate: null });
+}
+function saveStats(s) { save('stats', s); }
+
+function loadState() {
+  const tk = todayKey();
+  const s = load('state', null);
+  if (!s || s.date !== tk) {
+    state = { date: tk, guesses: [], keyboard: {}, status: 'playing' };
+  } else {
+    state = s;
+    if (!Array.isArray(state.guesses)) state.guesses = [];
+    if (!state.keyboard || typeof state.keyboard !== 'object') state.keyboard = {};
+    if (!['playing','won','lost'].includes(state.status)) state.status = 'playing';
+  }
+  currentGuess = '';
+  const source = VALID_ANSWERS.length ? VALID_ANSWERS : WORDS;
+  answer = source.length ? source[dayNumber() % source.length] : 'termo';
+}
+function persistState() { state.currentGuess = currentGuess; save('state', state); }
+
+function feedback(guess, ans) {
+  const res = new Array(5).fill('absent');
+  const used = new Array(5).fill(false);
+  for (let i = 0; i < 5; i++) {
+    if (guess[i] === ans[i]) { res[i] = 'correct'; used[i] = true; }
+  }
+  for (let i = 0; i < 5; i++) {
+    if (res[i] === 'correct') continue;
+    for (let j = 0; j < 5; j++) {
+      if (!used[j] && ans[j] === guess[i]) { res[i] = 'present'; used[j] = true; break; }
+    }
+  }
+  return res;
+}
+
+function statusWord(st) {
+  return st === 'correct' ? 'correta no lugar certo' : st === 'present' ? 'presente em outro lugar' : 'ausente';
+}
+
+function buildBoard() {
+  boardEl.innerHTML = '';
+  for (let r = 0; r < 6; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.setAttribute('role', 'row');
+    row.dataset.row = r;
+    row.setAttribute('aria-label', 'Tentativa ' + (r + 1));
+    for (let c = 0; c < 5; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.setAttribute('role', 'gridcell');
+      tile.dataset.r = r; tile.dataset.c = c;
+      tile.setAttribute('aria-label', 'Posição ' + (c + 1) + ', vazio');
+      const letter = document.createElement('span');
+      letter.className = 'letter';
+      tile.appendChild(letter);
+      const shape = document.createElement('span');
+      shape.className = 'shape';
+      shape.setAttribute('aria-hidden', 'true');
+      tile.appendChild(shape);
+      row.appendChild(tile);
+    }
+    boardEl.appendChild(row);
+  }
+}
+
+function renderBoard() {
+  const rows = boardEl.querySelectorAll('.row');
+  // reset all
+  rows.forEach((row, ri) => {
+    const tiles = row.querySelectorAll('.tile');
+    tiles.forEach((tile, c) => {
+      const letter = tile.querySelector('.letter');
+      if (letter) letter.textContent = '';
+      tile.classList.remove('filled','correct','present','absent','flip');
+      tile.setAttribute('aria-label', 'Tentativa ' + (ri+1) + ', posição ' + (c+1) + ', vazio');
+    });
+  });
+  state.guesses.forEach((g, ri) => {
+    const fb = feedback(g, answer);
+    const tiles = rows[ri].querySelectorAll('.tile');
+    for (let c = 0; c < 5; c++) {
+      const letter = tiles[c].querySelector('.letter');
+      if (letter) letter.textContent = g[c].toUpperCase();
+      tiles[c].classList.add(fb[c]);
+      tiles[c].setAttribute('aria-label', 'Tentativa ' + (ri+1) + ', posição ' + (c+1) + ', letra ' + g[c].toUpperCase() + ', ' + statusWord(fb[c]));
+    }
+  });
+  if (state.status === 'playing') {
+    const ri = state.guesses.length;
+    if (ri < 6) {
+      const tiles = rows[ri].querySelectorAll('.tile');
+      for (let c = 0; c < 5; c++) {
+        const ch = currentGuess[c];
+        const letter = tiles[c].querySelector('.letter');
+        if (ch) {
+          if (letter) letter.textContent = ch.toUpperCase();
+          tiles[c].classList.add('filled');
+          tiles[c].setAttribute('aria-label', 'Tentativa ' + (ri+1) + ', posição ' + (c+1) + ', letra digitada ' + ch.toUpperCase());
+        } else {
+          if (letter) letter.textContent = '';
+          tiles[c].setAttribute('aria-label', 'Tentativa ' + (ri+1) + ', posição ' + (c+1) + ', vazio');
+        }
+      }
+    }
+  }
+}
+
+function keyboardLayout() {
+  return ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+}
+function renderKeyboard() {
+  keyboardEl.innerHTML = '';
+  const rows = keyboardLayout();
+  rows.forEach((rowstr, idx) => {
+    const row = document.createElement('div');
+    row.className = 'kb-row';
+    if (idx === 1) row.style.paddingLeft = '4%';
+    if (idx === 2) {
+      const enter = document.createElement('button');
+      enter.className = 'key wide';
+      enter.type = 'button';
+      enter.textContent = 'Enter';
+      enter.dataset.key = 'ENTER';
+      enter.setAttribute('aria-label', 'Enviar palpite');
+      row.appendChild(enter);
+    }
+    for (const ch of rowstr) {
+      const k = document.createElement('button');
+      k.className = 'key';
+      k.type = 'button';
+      k.textContent = ch;
+      k.dataset.key = ch.toLowerCase();
+      k.setAttribute('aria-label', 'Letra ' + ch);
+      const st = state.keyboard[ch.toLowerCase()];
+      if (st) k.classList.add(st);
+      row.appendChild(k);
+    }
+    if (idx === 2) {
+      const bs = document.createElement('button');
+      bs.className = 'key wide';
+      bs.type = 'button';
+      bs.textContent = '⌫';
+      bs.dataset.key = 'BACKSPACE';
+      bs.setAttribute('aria-label', 'Apagar letra');
+      row.appendChild(bs);
+    }
+    keyboardEl.appendChild(row);
+  });
+  keyboardEl.querySelectorAll('.key').forEach(k => {
+    k.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleKey(k.dataset.key);
+      // return focus to hidden input for continued typing
+      setTimeout(() => guessInput.focus(), 0);
+    });
+  });
+}
+
+function toast(msg, assertive) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2000);
+  if (assertive) announceAssertive(msg);
+}
+
+function shakeRow(ri) {
+  const rows = boardEl.querySelectorAll('.row');
+  const r = rows[ri];
+  if (!r) return;
+  r.classList.remove('shake');
+  void r.offsetWidth;
+  r.classList.add('shake');
+  setTimeout(() => r.classList.remove('shake'), 400);
+}
+
+const RANK = { absent: 0, present: 1, correct: 2 };
+function upgradeKey(letter, status) {
+  const prev = state.keyboard[letter];
+  if (!prev || RANK[status] > RANK[prev]) state.keyboard[letter] = status;
+}
+
+function announcePolite(text) {
+  livePolite.textContent = '';
+  requestAnimationFrame(() => { livePolite.textContent = text; });
+}
+function announceAssertive(text) {
+  liveAssertive.textContent = '';
+  requestAnimationFrame(() => { liveAssertive.textContent = text; });
+}
+
+function updateStatusTitle(detail) {
+  statusTitle.textContent = detail.title;
+  statusDetail.textContent = detail.detail;
+}
+
+function submitGuess() {
+  if (busy || state.status !== 'playing') return;
+  if (currentGuess.length !== 5) {
+    shakeRow(state.guesses.length);
+    const msg = 'Palpite incompleto: são necessárias 5 letras.';
+    toast(msg, true);
+    announceAssertive(msg);
+    return;
+  }
+  const guess = currentGuess.toLowerCase();
+  if (!WORDS.includes(guess)) {
+    shakeRow(state.guesses.length);
+    const msg = 'Palavra não encontrada na lista.';
+    toast(msg, true);
+    announceAssertive(msg);
+    return;
+  }
+  busy = true;
+  const fb = feedback(guess, answer);
+  const ri = state.guesses.length;
+  const rows = boardEl.querySelectorAll('.row');
+  const tiles = rows[ri].querySelectorAll('.tile');
+  for (let c = 0; c < 5; c++) {
+    const letter = tiles[c].querySelector('.letter');
+    if (letter) letter.textContent = guess[c].toUpperCase();
+  }
+
+  const delay = prefersReducedMotion() ? 10 : 110;
+  for (let c = 0; c < 5; c++) {
+    setTimeout(() => {
+      tiles[c].classList.add('flip');
+      setTimeout(() => {
+        tiles[c].classList.remove('filled');
+        tiles[c].classList.add(fb[c]);
+        tiles[c].classList.remove('flip');
+        tiles[c].setAttribute('aria-label', 'Tentativa ' + (ri+1) + ', posição ' + (c+1) + ', letra ' + guess[c].toUpperCase() + ', ' + statusWord(fb[c]));
+      }, delay);
+    }, c * delay);
+  }
+
+  setTimeout(() => {
+    state.guesses.push(guess);
+    for (let c = 0; c < 5; c++) upgradeKey(guess[c], fb[c]);
+    const guessSummary = guess.split('').map((ch, i) => ch.toUpperCase() + ': ' + statusWord(fb[i])).join('; ');
+    const attemptNum = state.guesses.length;
+    const won = guess === answer;
+    const lost = !won && state.guesses.length >= 6;
+    if (won || lost) {
+      state.status = won ? 'won' : 'lost';
+      updateStats(state.status === 'won', state.guesses.length);
+    }
+    currentGuess = '';
+    persistState();
+    renderBoard();
+    renderKeyboard();
+    // Announcements
+    announcePolite('Tentativa ' + attemptNum + ' de 6: ' + guessSummary + '.');
+    updateStatusTitle({
+      title: 'Tentativa ' + attemptNum + ' enviada.',
+      detail: won ? 'Parabéns! Você acertou a palavra.' : (lost ? 'Fim de jogo.' : 'Continue tentando. ' + (5 - currentGuess.length) + ' letras no palpite atual.')
+    });
+    if (won) announceAssertive('Parabéns! Você acertou a palavra em ' + attemptNum + ' tentativas.');
+    if (lost) announceAssertive('Fim de jogo. A palavra era ' + answer.toUpperCase() + '.');
+    busy = false;
+    if (won || lost) {
+      setTimeout(() => showResult(won, state.guesses.length), 300);
+    }
+  }, 5 * delay + 200);
+}
+
+function handleKey(key) {
+  if (busy || state.status !== 'playing') return;
+  if (key === 'ENTER') { submitGuess(); return; }
+  if (key === 'BACKSPACE') {
+    if (currentGuess.length > 0) currentGuess = currentGuess.slice(0, -1);
+    persistState();
+    renderBoard();
+    return;
+  }
+  if (/^[a-z]$/.test(key)) {
+    if (currentGuess.length < 5) {
+      currentGuess += key;
+      persistState();
+      renderBoard();
+    }
+  }
+}
+
+// Physical keyboard via hidden input + document fallback
+guessInput.addEventListener('keydown', (e) => {
+  const k = e.key;
+  if (k === 'Enter') { e.preventDefault(); handleKey('ENTER'); }
+  else if (k === 'Backspace') { e.preventDefault(); handleKey('BACKSPACE'); }
+  else if (/^[a-zA-Z]$/.test(k)) { e.preventDefault(); handleKey(k.toLowerCase()); }
+});
+// Keep input empty so SR doesn't echo stale text
+guessInput.addEventListener('input', () => { guessInput.value = ''; });
+
+document.addEventListener('keydown', (e) => {
+  // global shortcuts
+  if (e.key === 'Escape') {
+    // close topmost open modal or popover
+    const openModal = document.querySelector('.modal-backdrop.open');
+    if (openModal) { closeModal(openModal.id); return; }
+    if (popover.classList.contains('open')) { closePopover(); return; }
+  }
+  // If focus is in an input that is not our hidden field, don't hijack
+  const t = e.target;
+  if (t && t.tagName === 'INPUT' && t.id !== 'guessInput') return;
+  if (t && (t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  // Only handle physical typing when not focused on hidden input (it handles itself)
+  if (t && t.id === 'guessInput') return;
+  // body-level typing
+  const k = e.key;
+  if (k === 'Enter') { handleKey('ENTER'); e.preventDefault(); }
+  else if (k === 'Backspace') { handleKey('BACKSPACE'); e.preventDefault(); }
+  else if (/^[a-zA-Z]$/.test(k)) { handleKey(k.toLowerCase()); }
+});
+
+// Stats
+function updateStats(won, guessesCount) {
+  const s = loadStats();
+  s.played += 1;
+  if (won) {
+    s.wins += 1;
+    s.dist[guessesCount - 1] = (s.dist[guessesCount - 1] || 0) + 1;
+    const today = todayKey();
+    let prevDay = null;
+    if (s.lastWinDate) {
+      const pdate = new Date(s.lastWinDate + 'T00:00:00Z');
+      prevDay = new Date(pdate.getTime() + 86400000).toISOString().slice(0, 10);
+    }
+    if (s.lastWinDate === today) {
+      // already counted today; keep streak
+    } else if (prevDay === today) {
+      s.currentStreak = (s.currentStreak || 0) + 1;
+    } else {
+      s.currentStreak = 1;
+    }
+    s.lastWinDate = today;
+    if ((s.currentStreak || 0) > (s.bestStreak || 0)) s.bestStreak = s.currentStreak;
+  } else {
+    s.currentStreak = 0;
+  }
+  saveStats(s);
+  updateStreakBadge();
+}
+
+function winRate(s) { return s.played ? Math.round((s.wins / s.played) * 100) : 0; }
+
+function updateStreakBadge() {
+  const s = loadStats();
+  streakBadge.textContent = '🔥 ' + (s.currentStreak || 0);
+  streakBadge.setAttribute('aria-label', 'Sequência atual: ' + (s.currentStreak || 0));
+}
+
+function renderDist(container, highlightIdx) {
+  const s = loadStats();
+  container.innerHTML = '';
+  const max = Math.max(1, ...s.dist);
+  for (let i = 0; i < 6; i++) {
+    const row = document.createElement('div');
+    row.className = 'dist-row';
+    const label = document.createElement('div');
+    label.className = 'dist-label';
+    label.textContent = i + 1;
+    const wrap = document.createElement('div');
+    wrap.className = 'dist-bar-wrap';
+    const bar = document.createElement('div');
+    bar.className = 'dist-bar' + (highlightIdx === i + 1 ? ' highlight' : '');
+    const pct = Math.round((s.dist[i] / max) * 100);
+    bar.style.width = pct + '%';
+    bar.textContent = s.dist[i] ? s.dist[i] : '';
+    wrap.appendChild(bar);
+    const count = document.createElement('span');
+    count.className = 'sr-only';
+    count.textContent = s.dist[i] + ' vezes com ' + (i+1) + ' tentativas';
+    row.appendChild(label);
+    row.appendChild(wrap);
+    row.appendChild(count);
+    container.appendChild(row);
+  }
+}
+
+function emojiFor(status) {
+  return status === 'correct' ? '🟩' : status === 'present' ? '🟨' : '⬛';
+}
+function buildEmojiGrid() {
+  const lines = state.guesses.map(g => feedback(g, answer).map(emojiFor).join(''));
+  return 'Acessível ' + dayNumber() + ' ' + (state.status === 'won' ? state.guesses.length : 'X') + '/6\n\n' + lines.join('\n');
+}
+
+function showResult(won, guessesCount) {
+  const title = document.getElementById('resultTitle');
+  title.textContent = won ? 'Parabéns! Você acertou.' : 'Fim de jogo. A palavra era: ' + answer.toUpperCase();
+  const s = loadStats();
+  document.getElementById('statPlayed').textContent = s.played;
+  document.getElementById('statWin').textContent = winRate(s);
+  document.getElementById('statCur').textContent = s.currentStreak;
+  document.getElementById('statBest').textContent = s.bestStreak;
+  renderDist(document.getElementById('distChart'), won ? guessesCount : null);
+  document.getElementById('emojiGrid').textContent = buildEmojiGrid();
+  startCountdown();
+  announceAssertive(won ? 'Você venceu. Resultado disponível.' : 'Fim de jogo. A palavra era ' + answer.toUpperCase() + '.');
+  openModal('resultModal');
+}
+
+function showStatsModal() {
+  const s = loadStats();
+  document.getElementById('sPlayed').textContent = s.played;
+  document.getElementById('sWin').textContent = winRate(s);
+  document.getElementById('sCur').textContent = s.currentStreak;
+  document.getElementById('sBest').textContent = s.bestStreak;
+  renderDist(document.getElementById('statsDist'), null);
+  openModal('statsModal');
+}
+
+function startCountdown() {
+  const el = document.getElementById('countdown');
+  function tick() {
+    const now = new Date();
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const diff = tomorrow - now;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const sec = Math.floor((diff % 60000) / 1000);
+    el.textContent = 'Próxima palavra em ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  }
+  tick();
+  clearInterval(window.__cd);
+  window.__cd = setInterval(tick, 1000);
+}
+
+// Modal management with focus
+function getFocusable(container) {
+  return Array.from(container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null || el === container);
+}
+function openModal(id) {
+  const bd = document.getElementById(id);
+  bd.classList.add('open');
+  bd.setAttribute('aria-hidden', 'false');
+  lastFocus = document.activeElement;
+  const modal = bd.querySelector('.modal');
+  const focusables = bd.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusables.length) focusables[0].focus();
+  // trap
+  bd._trap = (e) => {
+    if (e.key !== 'Tab') return;
+    const items = Array.from(bd.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+      .filter(el => !el.disabled);
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  bd.addEventListener('keydown', bd._trap);
+}
+function closeModal(id) {
+  const bd = document.getElementById(id);
+  bd.classList.remove('open');
+  bd.setAttribute('aria-hidden', 'true');
+  if (bd._trap) { bd.removeEventListener('keydown', bd._trap); bd._trap = null; }
+  if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  lastFocus = null;
+}
+
+function closePopover() {
+  popover.classList.remove('open');
+  settingsBtn.setAttribute('aria-expanded', 'false');
+}
+
+// Settings wiring
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = popover.classList.toggle('open');
+  settingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    const items = popover.querySelectorAll('button');
+    if (items.length) items[0].focus();
+  }
+});
+document.addEventListener('click', (e) => {
+  if (popover.classList.contains('open') && !popover.contains(e.target) && e.target !== settingsBtn) closePopover();
+});
+
+themeToggle.addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (dark) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', 'dark');
+  themeToggle.classList.toggle('on', !dark);
+  themeToggle.setAttribute('aria-checked', (!dark) ? 'true' : 'false');
+  savePrefsFromDom();
+});
+colorblindToggle.addEventListener('click', () => {
+  const cb = document.documentElement.getAttribute('data-colorblind') === 'true';
+  if (cb) document.documentElement.removeAttribute('data-colorblind');
+  else document.documentElement.setAttribute('data-colorblind', 'true');
+  colorblindToggle.classList.toggle('on', !cb);
+  colorblindToggle.setAttribute('aria-checked', (!cb) ? 'true' : 'false');
+  savePrefsFromDom();
+});
+highContrastToggle.addEventListener('click', () => {
+  const hc = document.documentElement.getAttribute('data-highcontrast') === 'true';
+  if (hc) document.documentElement.removeAttribute('data-highcontrast');
+  else document.documentElement.setAttribute('data-highcontrast', 'true');
+  highContrastToggle.classList.toggle('on', !hc);
+  highContrastToggle.setAttribute('aria-checked', (!hc) ? 'true' : 'false');
+  savePrefsFromDom();
+});
+reducedMotionToggle.addEventListener('click', () => {
+  const rm = document.documentElement.getAttribute('data-reduced-motion') === 'true';
+  // toggle manual preference; re-apply considering system
+  const sys = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const newValue = rm ? sys : true; // if turning off manual, keep system state
+  if (newValue) document.documentElement.setAttribute('data-reduced-motion', 'true');
+  else document.documentElement.removeAttribute('data-reduced-motion');
+  reducedMotionToggle.classList.toggle('on', newValue);
+  reducedMotionToggle.setAttribute('aria-checked', newValue ? 'true' : 'false');
+  savePrefsFromDom();
+});
+
+document.getElementById('howToPlayBtn').addEventListener('click', () => { closePopover(); openModal('howModal'); });
+document.getElementById('statsBtn').addEventListener('click', () => { closePopover(); showStatsModal(); });
+
+document.querySelectorAll('[data-close]').forEach(b => {
+  b.addEventListener('click', () => closeModal(b.dataset.close));
+});
+document.querySelectorAll('.modal-backdrop').forEach(bd => {
+  bd.addEventListener('click', (e) => { if (e.target === bd) closeModal(bd.id); });
+});
+
+document.getElementById('shareBtn').addEventListener('click', async () => {
+  const text = buildEmojiGrid();
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      toast('Copiado para a área de transferência');
+      announcePolite('Resultado copiado para a área de transferência.');
+    } else {
+      window.prompt('Copie o resultado:', text);
+    }
+  } catch (e) {
+    window.prompt('Copie o resultado:', text);
+  }
+});
+
+// Match media listener for system reduced motion
+if (window.matchMedia) {
+  motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  motionQuery.addEventListener('change', (e) => {
+    const p = currentPrefs();
+    if (e.matches || p.reducedMotion) document.documentElement.setAttribute('data-reduced-motion', 'true');
+    else document.documentElement.removeAttribute('data-reduced-motion');
+    reducedMotionToggle.classList.toggle('on', document.documentElement.getAttribute('data-reduced-motion') === 'true');
+    reducedMotionToggle.setAttribute('aria-checked', document.documentElement.getAttribute('data-reduced-motion') === 'true' ? 'true' : 'false');
+  });
+}
+
+if (ANSWERS.length === 0 && WORDS.length) ANSWERS.push(WORDS[0]);
+
+// Init
+loadPrefs();
+loadState();
+buildBoard();
+renderBoard();
+renderKeyboard();
+updateStreakBadge();
+
+// Focus hidden input
+setTimeout(() => { try { guessInput.focus(); } catch (e) {} }, 100);
+
+// Status initial
+updateStatusTitle({
+  title: VALID_ANSWERS.length ? 'Palavra carregada. Boa sorte!' : 'Sem palavras disponíveis.',
+  detail: 'Tente adivinhar a palavra de 5 letras. Use Tab para navegar.'
+});
+
+// If already completed today, open result modal shortly
+if (state.status !== 'playing') {
+  setTimeout(() => showResult(state.status === 'won', state.guesses.length), 500);
+} else {
+  announcePolite('Jogo carregado. Digite uma palavra de 5 letras.');
+}
+</script>
+</body>
+</html>

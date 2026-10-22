@@ -1,0 +1,742 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Palavra do Dia â€” Minimal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     Minimal Classic â€” design tokens
+     ============================================================ */
+  :root {
+    --bg: #fafafa;
+    --bg-elev: #ffffff;
+    --fg: #1a1a1a;
+    --fg-muted: #6b6b6b;
+    --border: #e2e2e2;
+    --tile-bg: #ffffff;
+    --tile-border: #d0d0d0;
+    --key-bg: #e8e8e8;
+    --key-fg: #1a1a1a;
+    --correct: #538d4e;
+    --present: #b59f3b;
+    --absent: #787c7e;
+    --toast-bg: #1a1a1a;
+    --toast-fg: #ffffff;
+    --shadow: 0 1px 2px rgba(0,0,0,.06);
+    --radius: 6px;
+    --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  [data-theme="dark"] {
+    --bg: #121213;
+    --bg-elev: #1a1a1b;
+    --fg: #f0f0f0;
+    --fg-muted: #9a9a9a;
+    --border: #3a3a3c;
+    --tile-bg: #121213;
+    --tile-border: #3a3a3c;
+    --key-bg: #272729;
+    --key-fg: #f0f0f0;
+    --correct: #538d4e;
+    --present: #b59f3b;
+    --absent: #3a3a3c;
+    --toast-bg: #f0f0f0;
+    --toast-fg: #121213;
+    --shadow: none;
+  }
+  /* Colorblind-friendly tweaks: stronger differentiation + tile shapes */
+  [data-colorblind="true"] {
+    --correct: #4a90d9;   /* blue */
+    --present: #f5a623;  /* orange */
+    --absent: #787c7e;
+  }
+  /* reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important; }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header.app-header {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .title { font-size: 18px; font-weight: 700; margin: 0; letter-spacing: 1px; }
+  .streak { font-size: 13px; color: var(--fg-muted); display: flex; align-items: center; gap: 4px; }
+  .header-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--fg);
+    width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .icon-btn:hover { background: var(--key-bg); }
+  .icon-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px; width: 100%; }
+  .board {
+    display: grid; grid-template-rows: repeat(6, 1fr);
+    gap: 6px; width: min(92vw, 340px); aspect-ratio: 5/6;
+  }
+  .row { display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; }
+  .tile {
+    border: 2px solid var(--tile-border); border-radius: var(--radius);
+    background: var(--tile-bg); display: flex; align-items: center; justify-content: center;
+    font-size: clamp(18px, 6vw, 28px); font-weight: 700; text-transform: uppercase;
+    user-select: none; position: relative; transition: transform .1s;
+  }
+  .tile.filled { border-color: var(--fg-muted); animation: pop .1s ease; }
+  .tile.correct { background: var(--correct); border-color: var(--correct); color: #fff; }
+  .tile.present { background: var(--present); border-color: var(--present); color: #fff; }
+  .tile.absent { background: var(--absent); border-color: var(--absent); color: #fff; }
+  /* colorblind patterns */
+  [data-colorblind="true"] .tile.correct { border-style: solid; }
+  [data-colorblind="true"] .tile.present { border-style: dashed; }
+  [data-colorblind="true"] .tile.absent { border-style: dotted; }
+  .tile .shape {
+    position: absolute; bottom: 2px; right: 4px; font-size: 10px; opacity: 0; color: #fff;
+  }
+  [data-colorblind="true"] .tile.correct .shape, [data-colorblind="true"] .tile.present .shape, [data-colorblind="true"] .tile.absent .shape { opacity: 1; }
+  .tile.correct .shape::before { content: 'â—'; }
+  .tile.present .shape::before { content: 'â—'; }
+  .tile.absent .shape::before { content: 'Ã—'; }
+
+  .tile.flip { animation: flip .4s ease; }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+  @keyframes flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); background: var(--tile-bg);} 100% { transform: rotateX(0); } }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+  .row.shake { animation: shake .35s ease; }
+
+  .keyboard { width: min(92vw, 520px); display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .kb-row { display: flex; gap: 4px; justify-content: center; width: 100%; }
+  .key {
+    background: var(--key-bg); color: var(--key-fg); border: none; border-radius: 4px;
+    padding: 0; min-width: 28px; height: 44px; font-size: 13px; font-weight: 600;
+    cursor: pointer; flex: 1; max-width: 44px; text-transform: uppercase; font-family: inherit;
+  }
+  .key.wide { flex: 1.5; max-width: 64px; font-size: 11px; }
+  .key.correct { background: var(--correct); color: #fff; }
+  .key.present { background: var(--present); color: #fff; }
+  .key.absent { background: var(--absent); color: #fff; }
+  [data-colorblind="true"] .key.correct { border-bottom: 3px solid #fff; }
+  [data-colorblind="true"] .key.present { border-bottom: 3px dashed #fff; }
+  .key:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--toast-bg); color: var(--toast-fg); padding: 10px 16px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: all .2s; pointer-events: none; z-index: 50;
+    box-shadow: var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Popover (settings) */
+  .popover-wrap { position: relative; }
+  .popover {
+    position: absolute; top: 44px; right: 0; background: var(--bg-elev);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+    min-width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 40;
+    display: none; flex-direction: column; gap: 10px;
+  }
+  .popover.open { display: flex; }
+  .pref-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+  .toggle {
+    width: 40px; height: 22px; border-radius: 11px; background: var(--border);
+    border: none; cursor: pointer; position: relative; transition: background .2s;
+  }
+  .toggle.on { background: var(--correct); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: #fff; transition: left .2s;
+  }
+  .toggle.on::after { left: 20px; }
+  .link-btn { background: none; border: none; color: var(--fg); cursor: pointer; text-align: left; font-size: 14px; padding: 4px 0; }
+
+  /* Modals */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100;
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg-elev); border-radius: 12px; max-width: 420px; width: 100%;
+    padding: 24px; max-height: 90vh; overflow: auto; position: relative;
+  }
+  .modal h2 { margin: 0 0 12px; font-size: 20px; }
+  .modal h3 { margin: 12px 0 6px; font-size: 14px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .close-x { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--fg-muted); }
+  .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 12px 0; }
+  .stat { text-align: center; }
+  .stat .num { font-size: 26px; font-weight: 700; }
+  .stat .lbl { font-size: 11px; color: var(--fg-muted); }
+  .dist { display: flex; flex-direction: column; gap: 4px; }
+  .dist-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .dist-label { width: 12px; }
+  .dist-bar-wrap { flex: 1; background: var(--border); height: 18px; border-radius: 3px; overflow: hidden; }
+  .dist-bar { height: 100%; background: var(--fg-muted); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; color: #fff; font-size: 11px; }
+  .dist-bar.highlight { background: var(--correct); }
+  .emoji-grid { font-family: monospace; font-size: 18px; white-space: pre; margin: 12px 0; text-align: center; line-height: 1.3; }
+  .btn {
+    background: var(--correct); color: #fff; border: none; border-radius: 8px;
+    padding: 12px 16px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%;
+  }
+  .btn.secondary { background: var(--key-bg); color: var(--fg); }
+  .countdown { font-size: 14px; color: var(--fg-muted); text-align: center; margin: 8px 0; }
+  .next-day-note { font-size: 13px; color: var(--fg-muted); text-align: center; }
+
+  @media (max-width: 480px) {
+    .key { height: 40px; font-size: 12px; }
+    .title { font-size: 16px; }
+  }
+</style>
+<script src="../data/words-ptbr.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1 class="title">Palavra do Dia</h1>
+    <div class="streak" id="streakBadge">ðŸ”¥ 0</div>
+    <div class="header-actions">
+      <div class="popover-wrap">
+        <button class="icon-btn" id="settingsBtn" aria-label="ConfiguraÃ§Ãµes" aria-haspopup="true" aria-expanded="false">âš™</button>
+        <div class="popover" id="popover" role="dialog" aria-label="ConfiguraÃ§Ãµes">
+          <div class="pref-row">
+            <span>Tema escuro</span>
+            <button class="toggle" id="themeToggle" aria-label="Alternar tema escuro"></button>
+          </div>
+          <div class="pref-row">
+            <span>Modo daltÃ´nico</span>
+            <button class="toggle" id="colorblindToggle" aria-label="Alternar modo daltÃ´nico"></button>
+          </div>
+          <button class="link-btn" id="howToPlayBtn">Como jogar</button>
+          <button class="link-btn" id="statsBtn">EstatÃ­sticas</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="board" class="board" role="grid" aria-label="Tabuleiro de jogo"></div>
+    <div id="keyboard" class="keyboard"></div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Result modal -->
+  <div class="modal-backdrop" id="resultModal">
+    <div class="modal">
+      <button class="close-x" data-close="resultModal" aria-label="Fechar">Ã—</button>
+      <h2 id="resultTitle">ParabÃ©ns!</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="num" id="statPlayed">0</div><div class="lbl">Jogos</div></div>
+        <div class="stat"><div class="num" id="statWin">0</div><div class="lbl">VitÃ³ria %</div></div>
+        <div class="stat"><div class="num" id="statCur">0</div><div class="lbl">SequÃªncia</div></div>
+        <div class="stat"><div class="num" id="statBest">0</div><div class="lbl">Melhor</div></div>
+      </div>
+      <h3>DistribuiÃ§Ã£o</h3>
+      <div class="dist" id="distChart"></div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+      <button class="btn" id="shareBtn">Compartilhar</button>
+      <div class="countdown" id="countdown"></div>
+      <div class="next-day-note">Jogar novamente amanhÃ£.</div>
+    </div>
+  </div>
+
+  <!-- How to play modal -->
+  <div class="modal-backdrop" id="howModal">
+    <div class="modal">
+      <button class="close-x" data-close="howModal" aria-label="Fechar">Ã—</button>
+      <h2>Como jogar</h2>
+      <p>Adivinhe a palavra secreta de 5 letras em atÃ© 6 tentativas.</p>
+      <p>ApÃ³s cada tentativa, as cores (e padrÃµes, no modo daltÃ´nico) indicam o quÃ£o perto vocÃª estÃ¡:</p>
+      <ul>
+        <li><strong>Verde</strong> â€” letra certa no lugar certo.</li>
+        <li><strong>Amarelo</strong> â€” letra estÃ¡ na palavra, em outro lugar.</li>
+        <li><strong>Cinza</strong> â€” letra nÃ£o estÃ¡ na palavra.</li>
+      </ul>
+      <p>VocÃª pode usar o teclado fÃ­sico ou o teclado na tela. Palavras precisam estar na lista.</p>
+    </div>
+  </div>
+
+  <!-- Stats modal (same content reuse) -->
+  <div class="modal-backdrop" id="statsModal">
+    <div class="modal">
+      <button class="close-x" data-close="statsModal" aria-label="Fechar">Ã—</button>
+      <h2>EstatÃ­sticas</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="num" id="sPlayed">0</div><div class="lbl">Jogos</div></div>
+        <div class="stat"><div class="num" id="sWin">0</div><div class="lbl">VitÃ³ria %</div></div>
+        <div class="stat"><div class="num" id="sCur">0</div><div class="lbl">SequÃªncia</div></div>
+        <div class="stat"><div class="num" id="sBest">0</div><div class="lbl">Melhor</div></div>
+      </div>
+      <h3>DistribuiÃ§Ã£o</h3>
+      <div class="dist" id="statsDist"></div>
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+   WORD DATA â€” replace arrays below with your curated lists.
+   WORD_LIST: valid 5-letter guesses (lowercase, no accents)
+   ANSWER_WORDS: smaller daily-answer subset
+   ============================================================ */
+
+// Fix above trailing junk manually not needed: remove invalid tokens by replacing entire array at validation step if required.
+
+</script>
+
+<script>
+/* ============================================================
+   APP LOGIC
+   ============================================================ */
+const KEY_PREFIX = 'minimal_';
+const WORDS = (typeof WORD_LIST !== 'undefined' ? WORD_LIST.filter(w => typeof w === 'string' && /^[a-z]{5}$/.test(w)) : []);
+const ANSWERS = (typeof ANSWER_WORDS !== 'undefined' ? ANSWER_WORDS.filter(w => typeof w === 'string' && /^[a-z]{5}$/.test(w)) : []);
+
+// DOM refs
+const boardEl = document.getElementById('board');
+const keyboardEl = document.getElementById('keyboard');
+const toastEl = document.getElementById('toast');
+const streakBadge = document.getElementById('streakBadge');
+const settingsBtn = document.getElementById('settingsBtn');
+const popover = document.getElementById('popover');
+const themeToggle = document.getElementById('themeToggle');
+const colorblindToggle = document.getElementById('colorblindToggle');
+const resultModal = document.getElementById('resultModal');
+const howModal = document.getElementById('howModal');
+const statsModal = document.getElementById('statsModal');
+
+// State
+let state = { date: null, guesses: [], keyboard: {}, status: 'playing' };
+let answer = '';
+let currentGuess = '';
+let busy = false;
+
+function todayKey() {
+  const d = new Date();
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
+}
+function dayNumber() { return Math.floor(Date.now() / 86400000); }
+
+function load(key, fallback) {
+  try { const v = localStorage.getItem(KEY_PREFIX + key); return v ? JSON.parse(v) : fallback; }
+  catch (e) { return fallback; }
+}
+function save(key, val) { try { localStorage.setItem(KEY_PREFIX + key, JSON.stringify(val)); } catch (e) {} }
+
+function loadPrefs() {
+  const p = load('prefs', { theme: 'light', colorblind: false });
+  applyTheme(p.theme);
+  applyColorblind(p.colorblind);
+  themeToggle.classList.toggle('on', p.theme === 'dark');
+  colorblindToggle.classList.toggle('on', !!p.colorblind);
+}
+function applyTheme(t) {
+  if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  else document.documentElement.removeAttribute('data-theme');
+}
+function applyColorblind(v) {
+  if (v) document.documentElement.setAttribute('data-colorblind','true');
+  else document.documentElement.removeAttribute('data-colorblind');
+}
+function savePrefs() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const cb = document.documentElement.getAttribute('data-colorblind') === 'true';
+  save('prefs', { theme: dark ? 'dark' : 'light', colorblind: cb });
+}
+
+function loadStats() {
+  return load('stats', { played: 0, wins: 0, dist: [0,0,0,0,0,0], currentStreak: 0, bestStreak: 0, lastWinDate: null });
+}
+function saveStats(s) { save('stats', s); }
+
+function loadState() {
+  const tk = todayKey();
+  const s = load('state', null);
+  if (!s || s.date !== tk) {
+    state = { date: tk, guesses: [], keyboard: {}, status: 'playing', currentGuess: '' };
+  } else {
+    state = s;
+    if (typeof state.currentGuess !== 'string') state.currentGuess = '';
+  }
+  currentGuess = state.currentGuess || '';
+  answer = ANSWERS.length ? ANSWERS[dayNumber() % ANSWERS.length] : (WORDS[dayNumber() % WORDS.length] || 'termo');
+  // ensure answer in WORDS ideally; if not, still playable
+}
+function persistState() { save('state', state); }
+
+function feedback(guess, ans) {
+  const res = new Array(5).fill('absent');
+  const used = new Array(5).fill(false);
+  // greens
+  for (let i = 0; i < 5; i++) {
+    if (guess[i] === ans[i]) { res[i] = 'correct'; used[i] = true; }
+  }
+  // yellows
+  for (let i = 0; i < 5; i++) {
+    if (res[i] === 'correct') continue;
+    for (let j = 0; j < 5; j++) {
+      if (!used[j] && ans[j] === guess[i]) { res[i] = 'present'; used[j] = true; break; }
+    }
+  }
+  return res;
+}
+
+// Build board
+function buildBoard() {
+  boardEl.innerHTML = '';
+  for (let r = 0; r < 6; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.row = r;
+    for (let c = 0; c < 5; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      const shape = document.createElement('span');
+      shape.className = 'shape';
+      tile.appendChild(shape);
+      row.appendChild(tile);
+    }
+    boardEl.appendChild(row);
+  }
+}
+function renderBoard() {
+  const rows = boardEl.querySelectorAll('.row');
+  state.guesses.forEach((g, ri) => {
+    const fb = feedback(g, answer);
+    const tiles = rows[ri].querySelectorAll('.tile');
+    for (let c = 0; c < 5; c++) {
+      tiles[c].textContent = g[c].toUpperCase();
+      tiles[c].classList.remove('filled','correct','present','absent');
+      tiles[c].classList.add(fb[c]);
+    }
+  });
+  // current guess
+  if (state.status === 'playing') {
+    const ri = state.guesses.length;
+    if (ri < 6) {
+      const tiles = rows[ri].querySelectorAll('.tile');
+      for (let c = 0; c < 5; c++) {
+        tiles[c].textContent = (currentGuess[c] || '').toUpperCase();
+        tiles[c].classList.toggle('filled', c < currentGuess.length);
+        if (c >= currentGuess.length) {
+          tiles[c].classList.remove('correct','present','absent');
+        }
+      }
+    }
+  }
+}
+function renderKeyboard() {
+  const layout = ['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+  keyboardEl.innerHTML = '';
+  layout.forEach((rowstr, idx) => {
+    const row = document.createElement('div');
+    row.className = 'kb-row';
+    if (idx === 1) row.style.paddingLeft = '6%';
+    if (idx === 2) { /* add enter/backspace */ }
+    // enter key on last row left
+    if (idx === 2) {
+      const enter = document.createElement('button');
+      enter.className = 'key wide';
+      enter.textContent = 'Enter';
+      enter.dataset.key = 'ENTER';
+      row.appendChild(enter);
+    }
+    for (const ch of rowstr) {
+      const k = document.createElement('button');
+      k.className = 'key';
+      k.textContent = ch;
+      k.dataset.key = ch.toLowerCase();
+      const st = state.keyboard[ch.toLowerCase()];
+      if (st) k.classList.add(st);
+      row.appendChild(k);
+    }
+    if (idx === 2) {
+      const bs = document.createElement('button');
+      bs.className = 'key wide';
+      bs.textContent = 'âŒ«';
+      bs.dataset.key = 'BACKSPACE';
+      row.appendChild(bs);
+    }
+    keyboardEl.appendChild(row);
+  });
+  // wire clicks
+  keyboardEl.querySelectorAll('.key').forEach(k => {
+    k.addEventListener('click', () => handleKey(k.dataset.key));
+  });
+}
+
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+
+function shakeRow(ri) {
+  const rows = boardEl.querySelectorAll('.row');
+  const r = rows[ri];
+  r.classList.remove('shake');
+  void r.offsetWidth;
+  r.classList.add('shake');
+}
+
+const RANK = { absent: 0, present: 1, correct: 2 };
+function upgradeKey(letter, status) {
+  const prev = state.keyboard[letter];
+  if (!prev || RANK[status] > RANK[prev]) state.keyboard[letter] = status;
+}
+
+function submitGuess() {
+  if (busy || state.status !== 'playing') return;
+  if (currentGuess.length !== 5) { shakeRow(state.guesses.length); return; }
+  const guess = currentGuess.toLowerCase();
+  if (!WORDS.includes(guess)) { shakeRow(state.guesses.length); toast('Palavra nÃ£o encontrada'); return; }
+  busy = true;
+  const fb = feedback(guess, answer);
+  // animate flip per tile
+  const ri = state.guesses.length;
+  const rows = boardEl.querySelectorAll('.row');
+  const tiles = rows[ri].querySelectorAll('.tile');
+  for (let c = 0; c < 5; c++) {
+    tiles[c].textContent = guess[c].toUpperCase();
+  }
+  // apply classes after staggered flip
+  for (let c = 0; c < 5; c++) {
+    setTimeout(() => {
+      tiles[c].classList.add('flip');
+      setTimeout(() => {
+        tiles[c].classList.remove('filled');
+        tiles[c].classList.add(fb[c]);
+        tiles[c].classList.remove('flip');
+      }, 200);
+    }, c * 120);
+  }
+  setTimeout(() => {
+    state.guesses.push(guess);
+    for (let c = 0; c < 5; c++) upgradeKey(guess[c], fb[c]);
+    currentGuess = '';
+    state.currentGuess = '';
+    // win/lose check
+    const won = guess === answer;
+    const lost = !won && state.guesses.length >= 6;
+    if (won || lost) {
+      state.status = won ? 'won' : 'lost';
+      updateStats(won, state.guesses.length);
+    }
+    persistState();
+    renderBoard();
+    renderKeyboard();
+    busy = false;
+    if (won || lost) {
+      setTimeout(() => showResult(won, state.guesses.length), 300);
+    }
+  }, 5 * 120 + 250);
+}
+
+function handleKey(key) {
+  if (busy || state.status !== 'playing') return;
+  if (key === 'ENTER') { submitGuess(); return; }
+  if (key === 'BACKSPACE') {
+    if (currentGuess.length > 0) currentGuess = currentGuess.slice(0,-1);
+    state.currentGuess = currentGuess; persistState(); renderBoard();
+    return;
+  }
+  if (/^[a-z]$/.test(key)) {
+    if (currentGuess.length < 5) { currentGuess += key; state.currentGuess = currentGuess; persistState(); renderBoard(); }
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  const k = e.key;
+  if (k === 'Enter') { handleKey('ENTER'); e.preventDefault(); }
+  else if (k === 'Backspace') { handleKey('BACKSPACE'); e.preventDefault(); }
+  else if (/^[a-zA-Z]$/.test(k)) { handleKey(k.toLowerCase()); }
+});
+
+// Stats update
+function updateStats(won, guessesCount) {
+  const s = loadStats();
+  s.played += 1;
+  if (won) {
+    s.wins += 1;
+    s.dist[guessesCount-1] = (s.dist[guessesCount-1] || 0) + 1;
+    // streak
+    const today = todayKey();
+    const prev = s.lastWinDate;
+    let prevDay = null;
+    if (prev) {
+      const pdate = new Date(prev + 'T00:00:00Z');
+      prevDay = new Date(pdate.getTime() + 86400000).toISOString().slice(0,10);
+    }
+    if (prev === today) {
+      // already counted today; do nothing (shouldn't happen)
+    } else if (prevDay === today) {
+      s.currentStreak = (s.currentStreak || 0) + 1;
+    } else {
+      s.currentStreak = 1;
+    }
+    s.lastWinDate = today;
+    if (s.currentStreak > s.bestStreak) s.bestStreak = s.currentStreak;
+  } else {
+    s.currentStreak = 0;
+  }
+  saveStats(s);
+  updateStreakBadge();
+}
+
+function winRate(s) { return s.played ? Math.round((s.wins / s.played) * 100) : 0; }
+
+function updateStreakBadge() {
+  const s = loadStats();
+  streakBadge.textContent = 'ðŸ”¥ ' + (s.currentStreak || 0);
+}
+
+function renderDist(container, highlightIdx) {
+  const s = loadStats();
+  container.innerHTML = '';
+  const max = Math.max(1, ...s.dist);
+  for (let i = 0; i < 6; i++) {
+    const row = document.createElement('div');
+    row.className = 'dist-row';
+    row.innerHTML = `<div class="dist-label">${i+1}</div><div class="dist-bar-wrap"><div class="dist-bar ${highlightIdx === i+1 ? 'highlight':''}" style="width:${(s.dist[i]/max*100)}%">${s.dist[i]||''}</div></div>`;
+    container.appendChild(row);
+  }
+}
+
+function emojiFor(status) {
+  return status === 'correct' ? 'ðŸŸ©' : status === 'present' ? 'ðŸŸ¨' : 'â¬›';
+}
+function buildEmojiGrid() {
+  const lines = [];
+  state.guesses.forEach(g => {
+    const fb = feedback(g, answer);
+    lines.push(fb.map(emojiFor).join(''));
+  });
+  return 'Minimal ' + dayNumber() + ' ' + (state.status === 'won' ? state.guesses.length : 'X') + '/6\n\n' + lines.join('\n');
+}
+
+function showResult(won, guessesCount) {
+  document.getElementById('resultTitle').textContent = won ? 'ParabÃ©ns! ðŸŽ‰' : 'A palavra era: ' + answer.toUpperCase();
+  const s = loadStats();
+  document.getElementById('statPlayed').textContent = s.played;
+  document.getElementById('statWin').textContent = winRate(s);
+  document.getElementById('statCur').textContent = s.currentStreak;
+  document.getElementById('statBest').textContent = s.bestStreak;
+  renderDist(document.getElementById('distChart'), won ? guessesCount : null);
+  document.getElementById('emojiGrid').textContent = buildEmojiGrid();
+  startCountdown();
+  resultModal.classList.add('open');
+}
+
+function showStatsModal() {
+  const s = loadStats();
+  document.getElementById('sPlayed').textContent = s.played;
+  document.getElementById('sWin').textContent = winRate(s);
+  document.getElementById('sCur').textContent = s.currentStreak;
+  document.getElementById('sBest').textContent = s.bestStreak;
+  renderDist(document.getElementById('statsDist'), null);
+  statsModal.classList.add('open');
+}
+
+function startCountdown() {
+  const el = document.getElementById('countdown');
+  function tick() {
+    const now = new Date();
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()+1));
+    const diff = tomorrow - now;
+    const h = Math.floor(diff/3600000);
+    const m = Math.floor((diff%3600000)/60000);
+    const sec = Math.floor((diff%60000)/1000);
+    el.textContent = 'PrÃ³xima palavra em ' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+  tick();
+  clearInterval(window.__cd); window.__cd = setInterval(tick, 1000);
+}
+
+// Settings wiring
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = popover.classList.toggle('open');
+  settingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+document.addEventListener('click', (e) => {
+  if (!popover.contains(e.target) && e.target !== settingsBtn) popover.classList.remove('open');
+});
+themeToggle.addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (dark) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme','dark');
+  themeToggle.classList.toggle('on', !dark);
+  savePrefs();
+});
+colorblindToggle.addEventListener('click', () => {
+  const cb = document.documentElement.getAttribute('data-colorblind') === 'true';
+  if (cb) document.documentElement.removeAttribute('data-colorblind');
+  else document.documentElement.setAttribute('data-colorblind','true');
+  colorblindToggle.classList.toggle('on', !cb);
+  savePrefs();
+});
+document.getElementById('howToPlayBtn').addEventListener('click', () => { popover.classList.remove('open'); howModal.classList.add('open'); });
+document.getElementById('statsBtn').addEventListener('click', () => { popover.classList.remove('open'); showStatsModal(); });
+
+document.querySelectorAll('[data-close]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.getElementById(b.dataset.close).classList.remove('open');
+  });
+});
+document.querySelectorAll('.modal-backdrop').forEach(bd => {
+  bd.addEventListener('click', (e) => { if (e.target === bd) bd.classList.remove('open'); });
+});
+
+document.getElementById('shareBtn').addEventListener('click', async () => {
+  const text = buildEmojiGrid();
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      toast('Copiado para a Ã¡rea de transferÃªncia');
+    } else {
+      window.prompt('Copie:', text);
+    }
+  } catch (e) { window.prompt('Copie:', text); }
+});
+
+// Ensure answer word lists valid; if ANSWERS empty fallback
+if (ANSWERS.length === 0 && WORDS.length) ANSWERS.push(WORDS[0]);
+
+// Init
+loadPrefs();
+loadState();
+buildBoard();
+renderBoard();
+renderKeyboard();
+updateStreakBadge();
+
+// If already completed today, open result modal shortly
+if (state.status !== 'playing') {
+  setTimeout(() => showResult(state.status === 'won', state.guesses.length), 400);
+}
+</script>
+</body>
+</html>
